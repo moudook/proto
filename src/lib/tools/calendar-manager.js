@@ -213,6 +213,9 @@ export const calendarTools = {
         },
         execute: async (params) => {
             const startTime = new Date(params.startTime);
+            if (isNaN(startTime.getTime())) {
+                throw new Error('Invalid start time format');
+            }
             const duration = params.duration || 60;
             const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
 
@@ -272,6 +275,9 @@ ${params.notes ? `📝 Notes: ${params.notes}` : ''}`,
         },
         execute: async (params) => {
             const date = params.date ? new Date(params.date) : new Date();
+            if (isNaN(date.getTime())) {
+                throw new Error('Invalid date format');
+            }
             const duration = params.duration || 60;
 
             // Define available hours based on preference

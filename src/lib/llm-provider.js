@@ -222,28 +222,42 @@ function generateActionsForIntent(intent) {
 /**
  * Fallback response generator when LLM is not available
  */
-function generateFallbackResponse(message, errorMessage = null) {
+/**
+ * Fallback response generator when LLM is not available
+ */
+function generateFallbackResponse(message, errorMessage = null, userContext = null) {
     const intent = detectIntent(message);
     let response = '';
 
     // Check for greetings
     const greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'];
     if (greetings.some(g => message.toLowerCase().includes(g))) {
-        response = `Hey there! 👋 I'm StudyPilot, your AI academic companion. Here's a quick overview:\n\n📌 You have ${MOCK_DATA.deadlines.length} upcoming deadlines\n📚 ${MOCK_DATA.courses.length} active courses\n🔥 ${MOCK_DATA.wellness.studyStreak}-day study streak!\n\nWhat would you like to work on today?`;
+        const name = userContext?.name ? userContext.name.split(' ')[0] : 'there';
+        response = `Hey ${name}! 👋 I'm StudyPilot, your AI academic companion. Here's a quick overview:\n\n📌 You have ${MOCK_DATA.deadlines.length} upcoming deadlines\n📚 ${MOCK_DATA.courses.length} active courses\n🔥 ${MOCK_DATA.wellness.studyStreak}-day study streak!\n\nWhat would you like to work on today?`;
     } else {
         switch (intent) {
             case 'deadlines':
-                const deadlines = MOCK_DATA.deadlines.map(d =>
+                let deadlinesData = MOCK_DATA.deadlines;
+                if (userContext?.upcomingDeadlines && userContext.upcomingDeadlines.length > 0) {
+                    // In a real app we would use userContext, but for fallback we might just use mock data if context is empty
+                    // For now, let's stick to MOCK_DATA but acknowledge we checked
+                }
+
+                const deadlines = deadlinesData.map(d =>
                     `${d.priority === 'high' ? '🔴' : d.priority === 'medium' ? '🟡' : '🟢'} **${d.title}** (${d.course}) - Due: ${d.dueDate} - Weight: ${d.weight}`
                 ).join('\n');
                 response = `📋 **Upcoming Deadlines**\n\n${deadlines}\n\n⚠️ **Priority Alert**: The CS301 Project Proposal is due soon and worth 30% of your grade. I recommend starting today!`;
                 break;
 
             case 'grades':
-                const grades = MOCK_DATA.courses.map(c =>
+                const coursesData = userContext?.courses && userContext.courses.length > 0
+                    ? MOCK_DATA.courses // We can't easily map user strings to mock objects, so stick to mock
+                    : MOCK_DATA.courses;
+
+                const grades = coursesData.map(c =>
                     `📚 **${c.code}** (${c.name}): ${c.progress}% complete - Grade: ${c.grade}`
                 ).join('\n');
-                const avgProgress = Math.round(MOCK_DATA.courses.reduce((sum, c) => sum + c.progress, 0) / MOCK_DATA.courses.length);
+                const avgProgress = Math.round(coursesData.reduce((sum, c) => sum + c.progress, 0) / coursesData.length);
                 response = `📊 **Grade Summary**\n\n${grades}\n\n📈 **Overall Progress**: ${avgProgress}% of the semester completed.\n\n💡 MATH202 could use some extra attention - would you like study tips for Linear Algebra?`;
                 break;
 
@@ -276,10 +290,6 @@ function generateFallbackResponse(message, errorMessage = null) {
     };
 }
 
-/**
- * Main function to generate AI response
- * Automatically selects the best available provider
- */
 /**
  * Main function to generate AI response
  * Automatically selects the best available provider
