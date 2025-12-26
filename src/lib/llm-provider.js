@@ -16,23 +16,26 @@ let model = null;
 function initializeGemini() {
     if (!genAI && process.env.GEMINI_API_KEY) {
         genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+        // Prepare tools for Gemini
+        const toolDefinitions = getToolDefinitions().map(tool => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+        }));
+
         model = genAI.getGenerativeModel({
             model: process.env.NEXT_PUBLIC_AI_MODEL || 'gemini-1.5-flash',
             systemInstruction: SYSTEM_PROMPT,
+            tools: [
+                {
+                    functionDeclarations: toolDefinitions,
+                },
+            ],
+            toolConfig: { functionCallingConfig: { mode: "AUTO" } },
         });
     }
     return model;
-}
-
-/**
- * Format tools for Gemini function calling
- */
-function formatToolsForGemini() {
-    return AGENT_TOOLS.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters
-    }));
 }
 
 /**
@@ -144,33 +147,47 @@ export async function generateWithGemini(message, conversationHistory = [], user
         });
 
         // Send the message
-        const result = await chat.sendMessage(message);
-        const response = result.response.text();
+        // Send the message
+        let result = await chat.sendMessage(message);
+        let response = await result.response;
+        let text = response.text();
 
-        // Check if we should execute any tools based on intent
-        let toolResults = null;
+        // Handle function calls if any
+        let functionCalls = response.functionCalls();
+        let toolResultsEntry = null;
 
-        if (intent === 'deadlines') {
-            toolResults = await executeToolCallFromRegistry('get_assignments', { status: 'all', limit: 5 });
-        } else if (intent === 'grades') {
-            toolResults = await executeToolCallFromRegistry('get_grade_summary', { includeTrends: true });
-        } else if (intent === 'wellness') {
-            toolResults = await executeToolCallFromRegistry('get_wellness_status', { includeRecommendations: true });
-        } else if (intent === 'schedule') {
-            toolResults = await executeToolCallFromRegistry('get_calendar_events', { startDate: 'this_week' });
-        } else if (intent === 'study') {
-            toolResults = await executeToolCallFromRegistry('get_topic_recommendations', { limit: 3 });
-        } else if (intent === 'courses') {
-            toolResults = await executeToolCallFromRegistry('get_courses', { includeDetails: true });
+        if (functionCalls && functionCalls.length > 0) {
+            // We only handle the first function call for now to avoid infinite loops in this version
+            const call = functionCalls[0];
+            const toolName = call.name;
+            const args = call.args;
+
+            console.log(`Executing tool: ${toolName}`, args);
+            const toolOutput = await executeToolCallFromRegistry(toolName, args);
+            toolResultsEntry = toolOutput;
+
+            // Send tool result back to the model
+            result = await chat.sendMessage([{
+                functionResponse: {
+                    name: toolName,
+                    response: {
+                        name: toolName,
+                        content: toolOutput.data || toolOutput.error
+                    }
+                }
+            }]);
+
+            response = await result.response;
+            text = response.text();
         }
 
         // Generate actions based on intent
         const actions = generateActionsForIntent(intent);
 
         return {
-            response,
+            response: text,
             intent,
-            toolResults,
+            toolResults: toolResultsEntry,
             actions,
             model: 'gemini-1.5-flash',
             success: true
