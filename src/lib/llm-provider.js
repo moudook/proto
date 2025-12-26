@@ -7,6 +7,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SYSTEM_PROMPT, AGENT_TOOLS, MOCK_DATA, detectIntent } from './agent-config';
+import { executeTool, getToolDefinitions } from './tools';
 
 // Initialize Gemini client
 let genAI = null;
@@ -35,95 +36,23 @@ function formatToolsForGemini() {
 }
 
 /**
- * Execute a tool call and return the result
+ * Execute a tool call using the tool registry
  */
-async function executeToolCall(toolName, args) {
-    switch (toolName) {
-        case 'get_upcoming_deadlines':
-            const limit = args.limit || 5;
-            const courseFilter = args.course_code;
-            let deadlines = [...MOCK_DATA.deadlines];
+async function executeToolCallFromRegistry(toolName, args) {
+    const result = await executeTool(toolName, args);
 
-            if (courseFilter) {
-                deadlines = deadlines.filter(d => d.course === courseFilter);
-            }
-
-            return {
-                success: true,
-                data: deadlines.slice(0, limit),
-                formatted: deadlines.slice(0, limit).map(d =>
-                    `${d.priority === 'high' ? '🔴' : d.priority === 'medium' ? '🟡' : '🟢'} ${d.title} (${d.course}) - Due: ${d.dueDate} - Weight: ${d.weight}`
-                ).join('\n')
-            };
-
-        case 'get_grade_summary':
-            return {
-                success: true,
-                data: MOCK_DATA.courses.map(c => ({
-                    code: c.code,
-                    name: c.name,
-                    grade: c.grade,
-                    progress: c.progress
-                })),
-                formatted: MOCK_DATA.courses.map(c =>
-                    `📚 ${c.code} (${c.name}): ${c.progress}% complete - Grade: ${c.grade}`
-                ).join('\n')
-            };
-
-        case 'get_course_schedule':
-            return {
-                success: true,
-                data: MOCK_DATA.courses.map(c => ({
-                    code: c.code,
-                    name: c.name,
-                    nextClass: c.nextClass,
-                    professor: c.professor
-                })),
-                formatted: MOCK_DATA.courses.map(c =>
-                    `📅 ${c.code} - ${c.name} with ${c.professor}`
-                ).join('\n')
-            };
-
-        case 'get_wellness_status':
-            const wellness = MOCK_DATA.wellness;
-            return {
-                success: true,
-                data: wellness,
-                formatted: `Balance Score: ${wellness.overallScore}/10\n😴 Sleep: ${wellness.sleep}\n😰 Stress: ${wellness.stress}\n📚 Workload: ${wellness.workload}\n🔥 Study Streak: ${wellness.studyStreak} days`
-            };
-
-        case 'create_study_plan':
-            return {
-                success: true,
-                data: {
-                    topic: args.topic,
-                    sessions: [
-                        { day: 'Day 1', duration: 2, focus: 'Review core concepts' },
-                        { day: 'Day 2', duration: 1.5, focus: 'Practice problems' },
-                        { day: 'Day 3', duration: 2, focus: 'Deep dive on weak areas' }
-                    ]
-                },
-                formatted: `📚 Study Plan for "${args.topic}":\n• Day 1: Review core concepts (2 hours)\n• Day 2: Practice problems (1.5 hours)\n• Day 3: Deep dive on weak areas (2 hours)`
-            };
-
-        case 'schedule_study_session':
-            return {
-                success: true,
-                data: {
-                    scheduled: true,
-                    title: args.title,
-                    date: args.date,
-                    duration: args.duration_hours
-                },
-                formatted: `✅ Scheduled: "${args.title}" for ${args.date} (${args.duration_hours} hours)`
-            };
-
-        default:
-            return {
-                success: false,
-                error: `Unknown tool: ${toolName}`
-            };
+    if (result.success) {
+        return {
+            success: true,
+            data: result.result,
+            formatted: result.result?.formatted || JSON.stringify(result.result),
+        };
     }
+
+    return {
+        success: false,
+        error: result.error,
+    };
 }
 
 /**
@@ -215,11 +144,17 @@ export async function generateWithGemini(message, conversationHistory = []) {
         let toolResults = null;
 
         if (intent === 'deadlines') {
-            toolResults = await executeToolCall('get_upcoming_deadlines', { limit: 5 });
+            toolResults = await executeToolCallFromRegistry('get_assignments', { status: 'all', limit: 5 });
         } else if (intent === 'grades') {
-            toolResults = await executeToolCall('get_grade_summary', {});
+            toolResults = await executeToolCallFromRegistry('get_grade_summary', { includeTrends: true });
         } else if (intent === 'wellness') {
-            toolResults = await executeToolCall('get_wellness_status', { include_recommendations: true });
+            toolResults = await executeToolCallFromRegistry('get_wellness_status', { includeRecommendations: true });
+        } else if (intent === 'schedule') {
+            toolResults = await executeToolCallFromRegistry('get_calendar_events', { startDate: 'this_week' });
+        } else if (intent === 'study') {
+            toolResults = await executeToolCallFromRegistry('get_topic_recommendations', { limit: 3 });
+        } else if (intent === 'courses') {
+            toolResults = await executeToolCallFromRegistry('get_courses', { includeDetails: true });
         }
 
         // Generate actions based on intent
