@@ -3,266 +3,296 @@
 import { useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import {
-    User,
-    Bell,
-    Palette,
-    Link2,
-    Shield,
-    Sparkles,
-    ChevronRight,
-    Moon,
-    Sun,
-    Monitor,
-    ExternalLink,
-    Check
+  User,
+  Bell,
+  Palette,
+  Link2,
+  Shield,
+  Sparkles,
+  ChevronRight,
+  Moon,
+  Sun,
+  Monitor,
+  ExternalLink,
+  Check
 } from 'lucide-react';
 
 const settingsSections = [
-    { id: 'profile', icon: User, label: 'Profile' },
-    { id: 'notifications', icon: Bell, label: 'Notifications' },
-    { id: 'appearance', icon: Palette, label: 'Appearance' },
-    { id: 'integrations', icon: Link2, label: 'Integrations' },
-    { id: 'ai', icon: Sparkles, label: 'AI Preferences' },
-    { id: 'privacy', icon: Shield, label: 'Privacy & Security' },
+  { id: 'profile', icon: User, label: 'Profile' },
+  { id: 'notifications', icon: Bell, label: 'Notifications' },
+  { id: 'appearance', icon: Palette, label: 'Appearance' },
+  { id: 'integrations', icon: Link2, label: 'Integrations' },
+  { id: 'ai', icon: Sparkles, label: 'AI Preferences' },
+  { id: 'privacy', icon: Shield, label: 'Privacy & Security' },
 ];
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function SettingsPage() {
-    const [activeSection, setActiveSection] = useState('profile');
-    const [theme, setTheme] = useState('light');
-    const [notifications, setNotifications] = useState({
-        deadlines: true,
-        aiInsights: true,
-        wellness: false,
-        email: true
-    });
+  const { user, updateProfile } = useAuth();
+  const [activeSection, setActiveSection] = useState('profile');
+  const [theme, setTheme] = useState('light');
+  const [notifications, setNotifications] = useState({
+    deadlines: true,
+    aiInsights: true,
+    wellness: false,
+    email: true
+  });
 
-    return (
-        <>
-            <PageHeader
-                title="Settings"
-                subtitle="Manage your preferences"
-            />
+  // Local state for form inputs
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    university: user?.university || '',
+    major: user?.major || ''
+  });
 
-            <div className="page-content">
-                <div className="settings-layout">
-                    {/* Settings Navigation - CENTRALIZED in left sidebar */}
-                    <nav className="settings-nav">
-                        {settingsSections.map((section) => {
-                            const Icon = section.icon;
-                            return (
-                                <button
-                                    key={section.id}
-                                    className={`settings-nav-item ${activeSection === section.id ? 'active' : ''}`}
-                                    onClick={() => setActiveSection(section.id)}
-                                >
-                                    <Icon size={18} />
-                                    <span>{section.label}</span>
-                                    <ChevronRight size={16} className="nav-arrow" />
-                                </button>
-                            );
-                        })}
-                    </nav>
+  const handleSaveProfile = () => {
+    updateProfile(formData);
+    alert('Profile updated successfully!');
+  };
 
-                    {/* Settings Content */}
-                    <div className="settings-content">
-                        {activeSection === 'profile' && (
-                            <SettingsSection title="Profile Settings">
-                                <div className="profile-header">
-                                    <div className="profile-avatar">
-                                        <span>A</span>
-                                    </div>
-                                    <div className="profile-info">
-                                        <h3>Alex Johnson</h3>
-                                        <p>alex.johnson@university.edu</p>
-                                    </div>
-                                    <button className="btn btn-secondary">Edit Profile</button>
-                                </div>
+  return (
+    <>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your preferences"
+      />
 
-                                <div className="form-group">
-                                    <label>Full Name</label>
-                                    <input type="text" className="input" defaultValue="Alex Johnson" />
-                                </div>
+      <div className="page-content">
+        <div className="settings-layout">
+          {/* Settings Navigation - CENTRALIZED in left sidebar */}
+          <nav className="settings-nav">
+            {settingsSections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <button
+                  key={section.id}
+                  className={`settings-nav-item ${activeSection === section.id ? 'active' : ''}`}
+                  onClick={() => setActiveSection(section.id)}
+                >
+                  <Icon size={18} />
+                  <span>{section.label}</span>
+                  <ChevronRight size={16} className="nav-arrow" />
+                </button>
+              );
+            })}
+          </nav>
 
-                                <div className="form-group">
-                                    <label>Email</label>
-                                    <input type="email" className="input" defaultValue="alex.johnson@university.edu" disabled />
-                                </div>
-
-                                <div className="form-group">
-                                    <label>University</label>
-                                    <input type="text" className="input" defaultValue="State University" />
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Major</label>
-                                    <input type="text" className="input" defaultValue="Computer Science" />
-                                </div>
-                            </SettingsSection>
-                        )}
-
-                        {activeSection === 'notifications' && (
-                            <SettingsSection title="Notification Preferences">
-                                <p className="section-description">
-                                    Choose what notifications you want to receive
-                                </p>
-
-                                <div className="toggle-list">
-                                    <ToggleItem
-                                        label="Deadline Reminders"
-                                        description="Get notified before assignments are due"
-                                        checked={notifications.deadlines}
-                                        onChange={() => setNotifications({ ...notifications, deadlines: !notifications.deadlines })}
-                                    />
-                                    <ToggleItem
-                                        label="AI Insights"
-                                        description="Receive personalized study recommendations"
-                                        checked={notifications.aiInsights}
-                                        onChange={() => setNotifications({ ...notifications, aiInsights: !notifications.aiInsights })}
-                                    />
-                                    <ToggleItem
-                                        label="Wellness Check-ins"
-                                        description="Periodic reminders to take breaks"
-                                        checked={notifications.wellness}
-                                        onChange={() => setNotifications({ ...notifications, wellness: !notifications.wellness })}
-                                    />
-                                    <ToggleItem
-                                        label="Email Notifications"
-                                        description="Receive important updates via email"
-                                        checked={notifications.email}
-                                        onChange={() => setNotifications({ ...notifications, email: !notifications.email })}
-                                    />
-                                </div>
-                            </SettingsSection>
-                        )}
-
-                        {activeSection === 'appearance' && (
-                            <SettingsSection title="Appearance">
-                                <p className="section-description">
-                                    Customize how StudyPilot looks
-                                </p>
-
-                                <div className="theme-selector">
-                                    <ThemeOption
-                                        icon={Sun}
-                                        label="Light"
-                                        active={theme === 'light'}
-                                        onClick={() => setTheme('light')}
-                                    />
-                                    <ThemeOption
-                                        icon={Moon}
-                                        label="Dark"
-                                        active={theme === 'dark'}
-                                        onClick={() => setTheme('dark')}
-                                    />
-                                    <ThemeOption
-                                        icon={Monitor}
-                                        label="System"
-                                        active={theme === 'system'}
-                                        onClick={() => setTheme('system')}
-                                    />
-                                </div>
-                            </SettingsSection>
-                        )}
-
-                        {activeSection === 'integrations' && (
-                            <SettingsSection title="Integrations">
-                                <p className="section-description">
-                                    Connect your accounts for a seamless experience
-                                </p>
-
-                                <div className="integrations-list">
-                                    <IntegrationItem
-                                        name="Google Calendar"
-                                        description="Sync your academic schedule"
-                                        connected={true}
-                                    />
-                                    <IntegrationItem
-                                        name="Canvas LMS"
-                                        description="Import courses and assignments"
-                                        connected={false}
-                                    />
-                                    <IntegrationItem
-                                        name="Notion"
-                                        description="Sync notes and study materials"
-                                        connected={false}
-                                    />
-                                </div>
-                            </SettingsSection>
-                        )}
-
-                        {activeSection === 'ai' && (
-                            <SettingsSection title="AI Preferences">
-                                <p className="section-description">
-                                    Customize how your AI assistant behaves
-                                </p>
-
-                                <div className="form-group">
-                                    <label>Response Style</label>
-                                    <select className="input">
-                                        <option>Concise</option>
-                                        <option>Detailed</option>
-                                        <option>Conversational</option>
-                                    </select>
-                                </div>
-
-                                <div className="form-group">
-                                    <label>Proactivity Level</label>
-                                    <select className="input">
-                                        <option>High - Suggest improvements frequently</option>
-                                        <option>Medium - Balanced suggestions</option>
-                                        <option>Low - Only when asked</option>
-                                    </select>
-                                </div>
-
-                                <div className="toggle-list">
-                                    <ToggleItem
-                                        label="Smart Scheduling"
-                                        description="Let AI optimize your study schedule"
-                                        checked={true}
-                                        onChange={() => { }}
-                                    />
-                                    <ToggleItem
-                                        label="Wellness Monitoring"
-                                        description="Allow AI to track stress patterns"
-                                        checked={true}
-                                        onChange={() => { }}
-                                    />
-                                </div>
-                            </SettingsSection>
-                        )}
-
-                        {activeSection === 'privacy' && (
-                            <SettingsSection title="Privacy & Security">
-                                <p className="section-description">
-                                    Control your data and privacy settings
-                                </p>
-
-                                <div className="toggle-list">
-                                    <ToggleItem
-                                        label="Usage Analytics"
-                                        description="Help improve StudyPilot with anonymous usage data"
-                                        checked={true}
-                                        onChange={() => { }}
-                                    />
-                                    <ToggleItem
-                                        label="Two-Factor Authentication"
-                                        description="Add an extra layer of security"
-                                        checked={false}
-                                        onChange={() => { }}
-                                    />
-                                </div>
-
-                                <div className="danger-zone">
-                                    <h4>Danger Zone</h4>
-                                    <button className="btn btn-danger">Delete Account</button>
-                                </div>
-                            </SettingsSection>
-                        )}
-                    </div>
+          {/* Settings Content */}
+          <div className="settings-content">
+            {activeSection === 'profile' && (
+              <SettingsSection title="Profile Settings">
+                <div className="profile-header">
+                  <div className="profile-avatar">
+                    <span>{user?.name?.[0] || 'A'}</span>
+                  </div>
+                  <div className="profile-info">
+                    <h3>{user?.name || 'Guest'}</h3>
+                    <p>{user?.email || 'guest@example.com'}</p>
+                  </div>
+                  <button className="btn btn-secondary" onClick={handleSaveProfile}>Save Changes</button>
                 </div>
-            </div>
 
-            <style jsx>{`
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email</label>
+                  <input type="email" className="input" value={user?.email || ''} disabled />
+                </div>
+
+                <div className="form-group">
+                  <label>University</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.university}
+                    onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Major</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.major}
+                    onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+                  />
+                </div>
+              </SettingsSection>
+            )}
+
+            {activeSection === 'notifications' && (
+              <SettingsSection title="Notification Preferences">
+                <p className="section-description">
+                  Choose what notifications you want to receive
+                </p>
+
+                <div className="toggle-list">
+                  <ToggleItem
+                    label="Deadline Reminders"
+                    description="Get notified before assignments are due"
+                    checked={notifications.deadlines}
+                    onChange={() => setNotifications({ ...notifications, deadlines: !notifications.deadlines })}
+                  />
+                  <ToggleItem
+                    label="AI Insights"
+                    description="Receive personalized study recommendations"
+                    checked={notifications.aiInsights}
+                    onChange={() => setNotifications({ ...notifications, aiInsights: !notifications.aiInsights })}
+                  />
+                  <ToggleItem
+                    label="Wellness Check-ins"
+                    description="Periodic reminders to take breaks"
+                    checked={notifications.wellness}
+                    onChange={() => setNotifications({ ...notifications, wellness: !notifications.wellness })}
+                  />
+                  <ToggleItem
+                    label="Email Notifications"
+                    description="Receive important updates via email"
+                    checked={notifications.email}
+                    onChange={() => setNotifications({ ...notifications, email: !notifications.email })}
+                  />
+                </div>
+              </SettingsSection>
+            )}
+
+            {activeSection === 'appearance' && (
+              <SettingsSection title="Appearance">
+                <p className="section-description">
+                  Customize how StudyPilot looks
+                </p>
+
+                <div className="theme-selector">
+                  <ThemeOption
+                    icon={Sun}
+                    label="Light"
+                    active={theme === 'light'}
+                    onClick={() => setTheme('light')}
+                  />
+                  <ThemeOption
+                    icon={Moon}
+                    label="Dark"
+                    active={theme === 'dark'}
+                    onClick={() => setTheme('dark')}
+                  />
+                  <ThemeOption
+                    icon={Monitor}
+                    label="System"
+                    active={theme === 'system'}
+                    onClick={() => setTheme('system')}
+                  />
+                </div>
+              </SettingsSection>
+            )}
+
+            {activeSection === 'integrations' && (
+              <SettingsSection title="Integrations">
+                <p className="section-description">
+                  Connect your accounts for a seamless experience
+                </p>
+
+                <div className="integrations-list">
+                  <IntegrationItem
+                    name="Google Calendar"
+                    description="Sync your academic schedule"
+                    connected={true}
+                  />
+                  <IntegrationItem
+                    name="Canvas LMS"
+                    description="Import courses and assignments"
+                    connected={false}
+                  />
+                  <IntegrationItem
+                    name="Notion"
+                    description="Sync notes and study materials"
+                    connected={false}
+                  />
+                </div>
+              </SettingsSection>
+            )}
+
+            {activeSection === 'ai' && (
+              <SettingsSection title="AI Preferences">
+                <p className="section-description">
+                  Customize how your AI assistant behaves
+                </p>
+
+                <div className="form-group">
+                  <label>Response Style</label>
+                  <select className="input">
+                    <option>Concise</option>
+                    <option>Detailed</option>
+                    <option>Conversational</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Proactivity Level</label>
+                  <select className="input">
+                    <option>High - Suggest improvements frequently</option>
+                    <option>Medium - Balanced suggestions</option>
+                    <option>Low - Only when asked</option>
+                  </select>
+                </div>
+
+                <div className="toggle-list">
+                  <ToggleItem
+                    label="Smart Scheduling"
+                    description="Let AI optimize your study schedule"
+                    checked={true}
+                    onChange={() => { }}
+                  />
+                  <ToggleItem
+                    label="Wellness Monitoring"
+                    description="Allow AI to track stress patterns"
+                    checked={true}
+                    onChange={() => { }}
+                  />
+                </div>
+              </SettingsSection>
+            )}
+
+            {activeSection === 'privacy' && (
+              <SettingsSection title="Privacy & Security">
+                <p className="section-description">
+                  Control your data and privacy settings
+                </p>
+
+                <div className="toggle-list">
+                  <ToggleItem
+                    label="Usage Analytics"
+                    description="Help improve StudyPilot with anonymous usage data"
+                    checked={true}
+                    onChange={() => { }}
+                  />
+                  <ToggleItem
+                    label="Two-Factor Authentication"
+                    description="Add an extra layer of security"
+                    checked={false}
+                    onChange={() => { }}
+                  />
+                </div>
+
+                <div className="danger-zone">
+                  <h4>Danger Zone</h4>
+                  <button className="btn btn-danger">Delete Account</button>
+                </div>
+              </SettingsSection>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
         .settings-layout {
           display: grid;
           grid-template-columns: 280px 1fr;
@@ -447,41 +477,41 @@ export default function SettingsPage() {
           }
         }
       `}</style>
-        </>
-    );
+    </>
+  );
 }
 
 // Reusable Components
 function SettingsSection({ title, children }) {
-    return (
-        <div className="settings-section">
-            <h2>{title}</h2>
-            {children}
-            <style jsx>{`
+  return (
+    <div className="settings-section">
+      <h2>{title}</h2>
+      {children}
+      <style jsx>{`
         .settings-section h2 {
           font-size: 1.25rem;
           font-weight: 600;
           margin-bottom: var(--space-4);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 function ToggleItem({ label, description, checked, onChange }) {
-    return (
-        <div className="toggle-item">
-            <div className="toggle-info">
-                <span className="toggle-label">{label}</span>
-                <span className="toggle-description">{description}</span>
-            </div>
-            <button
-                className={`toggle-switch ${checked ? 'active' : ''}`}
-                onClick={onChange}
-            >
-                <span className="toggle-thumb" />
-            </button>
-            <style jsx>{`
+  return (
+    <div className="toggle-item">
+      <div className="toggle-info">
+        <span className="toggle-label">{label}</span>
+        <span className="toggle-description">{description}</span>
+      </div>
+      <button
+        className={`toggle-switch ${checked ? 'active' : ''}`}
+        onClick={onChange}
+      >
+        <span className="toggle-thumb" />
+      </button>
+      <style jsx>{`
         .toggle-item {
           display: flex;
           align-items: center;
@@ -538,20 +568,20 @@ function ToggleItem({ label, description, checked, onChange }) {
           transform: translateX(20px);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
 
 function ThemeOption({ icon: Icon, label, active, onClick }) {
-    return (
-        <button
-            className={`theme-option ${active ? 'active' : ''}`}
-            onClick={onClick}
-        >
-            <Icon size={24} />
-            <span>{label}</span>
-            {active && <Check size={16} className="check-icon" />}
-            <style jsx>{`
+  return (
+    <button
+      className={`theme-option ${active ? 'active' : ''}`}
+      onClick={onClick}
+    >
+      <Icon size={24} />
+      <span>{label}</span>
+      {active && <Check size={16} className="check-icon" />}
+      <style jsx>{`
         .theme-option {
           display: flex;
           flex-direction: column;
@@ -588,22 +618,22 @@ function ThemeOption({ icon: Icon, label, active, onClick }) {
           color: var(--accent-primary);
         }
       `}</style>
-        </button>
-    );
+    </button>
+  );
 }
 
 function IntegrationItem({ name, description, connected }) {
-    return (
-        <div className="integration-item">
-            <div className="integration-info">
-                <span className="integration-name">{name}</span>
-                <span className="integration-description">{description}</span>
-            </div>
-            <button className={`btn ${connected ? 'btn-secondary' : 'btn-primary'}`}>
-                {connected ? 'Disconnect' : 'Connect'}
-                {!connected && <ExternalLink size={14} />}
-            </button>
-            <style jsx>{`
+  return (
+    <div className="integration-item">
+      <div className="integration-info">
+        <span className="integration-name">{name}</span>
+        <span className="integration-description">{description}</span>
+      </div>
+      <button className={`btn ${connected ? 'btn-secondary' : 'btn-primary'}`}>
+        {connected ? 'Disconnect' : 'Connect'}
+        {!connected && <ExternalLink size={14} />}
+      </button>
+      <style jsx>{`
         .integration-item {
           display: flex;
           align-items: center;
@@ -629,6 +659,6 @@ function IntegrationItem({ name, description, connected }) {
           color: var(--text-secondary);
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

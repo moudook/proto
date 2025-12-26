@@ -392,6 +392,9 @@ export default function ChatPage() {
   );
 }
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 // Chat Message Component
 function ChatMessage({ message }) {
   const isAI = message.sender === 'ai';
@@ -404,7 +407,15 @@ function ChatMessage({ message }) {
 
       <div className="message-body">
         <div className="message-content">
-          <p>{message.content}</p>
+          {isAI ? (
+            <div className="markdown-content">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p>{message.content}</p>
+          )}
 
           {/* Render visual elements if present */}
           {message.visualElements && (
@@ -490,6 +501,29 @@ function ChatMessage({ message }) {
         .message-user .message-content {
           background: var(--accent-primary);
           color: white;
+        }
+        
+        /* Markdown Styles */
+        .markdown-content :global(p) { margin-bottom: 0.5em; }
+        .markdown-content :global(p:last-child) { margin-bottom: 0; }
+        .markdown-content :global(strong) { font-weight: 600; color: var(--text-primary); }
+        .markdown-content :global(ul), .markdown-content :global(ol) { padding-left: 1.5rem; margin-bottom: 0.5em; }
+        .markdown-content :global(li) { margin-bottom: 0.25em; }
+        .markdown-content :global(table) { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 1em 0; 
+            font-size: 0.875rem;
+        }
+        .markdown-content :global(th) { 
+            text-align: left; 
+            padding: 8px 12px; 
+            border-bottom: 2px solid var(--border-medium); 
+            font-weight: 600;
+        }
+        .markdown-content :global(td) { 
+            padding: 8px 12px; 
+            border-bottom: 1px solid var(--border-light); 
         }
 
         .message-visual {

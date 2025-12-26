@@ -4,137 +4,196 @@ import { useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/PageHeader';
 import {
-    Plus,
-    Filter,
-    Grid,
-    List,
-    ArrowRight,
-    Clock,
-    Users,
-    BookOpen,
-    MoreVertical
+  Plus,
+  Filter,
+  Grid,
+  List,
+  ArrowRight,
+  Clock,
+  Users,
+  BookOpen,
+  MoreVertical
 } from 'lucide-react';
 
 // Mock course data
 const coursesData = [
-    {
-        id: 'cs301',
-        code: 'CS301',
-        name: 'Algorithms',
-        professor: 'Dr. Smith',
-        semester: 'Spring 2024',
-        progress: 68,
-        color: '#6366F1',
-        nextDeadline: 'Project Proposal - 2 days',
-        students: 45,
-        status: 'active'
-    },
-    {
-        id: 'math202',
-        code: 'MATH202',
-        name: 'Linear Algebra',
-        professor: 'Dr. Johnson',
-        semester: 'Spring 2024',
-        progress: 45,
-        color: '#8B5CF6',
-        nextDeadline: 'Problem Set 5 - 4 days',
-        students: 32,
-        status: 'active'
-    },
-    {
-        id: 'eng101',
-        code: 'ENG101',
-        name: 'Academic Writing',
-        professor: 'Prof. Williams',
-        semester: 'Spring 2024',
-        progress: 82,
-        color: '#06B6D4',
-        nextDeadline: 'Essay Draft - 1 week',
-        students: 28,
-        status: 'active'
-    },
-    {
-        id: 'phys101',
-        code: 'PHYS101',
-        name: 'Physics I',
-        professor: 'Dr. Brown',
-        semester: 'Fall 2023',
-        progress: 100,
-        color: '#10B981',
-        nextDeadline: null,
-        students: 50,
-        status: 'completed'
-    },
+  {
+    id: 'cs301',
+    code: 'CS301',
+    name: 'Algorithms',
+    professor: 'Dr. Smith',
+    semester: 'Spring 2024',
+    progress: 68,
+    color: '#6366F1',
+    nextDeadline: 'Project Proposal - 2 days',
+    students: 45,
+    status: 'active'
+  },
+  {
+    id: 'math202',
+    code: 'MATH202',
+    name: 'Linear Algebra',
+    professor: 'Dr. Johnson',
+    semester: 'Spring 2024',
+    progress: 45,
+    color: '#8B5CF6',
+    nextDeadline: 'Problem Set 5 - 4 days',
+    students: 32,
+    status: 'active'
+  },
+  {
+    id: 'eng101',
+    code: 'ENG101',
+    name: 'Academic Writing',
+    professor: 'Prof. Williams',
+    semester: 'Spring 2024',
+    progress: 82,
+    color: '#06B6D4',
+    nextDeadline: 'Essay Draft - 1 week',
+    students: 28,
+    status: 'active'
+  },
+  {
+    id: 'phys101',
+    code: 'PHYS101',
+    name: 'Physics I',
+    professor: 'Dr. Brown',
+    semester: 'Fall 2023',
+    progress: 100,
+    color: '#10B981',
+    nextDeadline: null,
+    students: 50,
+    status: 'completed'
+  },
 ];
 
 const filters = [
-    { id: 'all', label: 'All Courses' },
-    { id: 'active', label: 'Active' },
-    { id: 'completed', label: 'Completed' },
+  { id: 'all', label: 'All Courses' },
+  { id: 'active', label: 'Active' },
+  { id: 'completed', label: 'Completed' },
 ];
 
 export default function CoursesPage() {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState('all');
-    const [viewMode, setViewMode] = useState('grid');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('grid');
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    // Filter courses based on search and filter
-    const filteredCourses = coursesData.filter(course => {
-        const matchesSearch =
-            course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            course.code.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch Courses
+        const coursesRes = await fetch('/api/tools', {
+          method: 'POST',
+          body: JSON.stringify({ toolName: 'get_courses', parameters: { includeDetails: true } })
+        });
+        const coursesData = await coursesRes.json();
 
-        const matchesFilter =
-            activeFilter === 'all' ||
-            course.status === activeFilter;
+        // Fetch Assignments for deadlines
+        const assignmentsRes = await fetch('/api/tools', {
+          method: 'POST',
+          body: JSON.stringify({ toolName: 'get_assignments', parameters: { status: 'upcoming' } })
+        });
+        const assignmentsData = await assignmentsRes.json();
 
-        return matchesSearch && matchesFilter;
-    });
+        if (coursesData.success) {
+          const assignments = assignmentsData.success ? assignmentsData.result.assignments : [];
 
-    return (
-        <>
-            {/* CENTRALIZED HEADER with search, filters, and actions */}
-            <PageHeader
-                title="My Courses"
-                subtitle={`${filteredCourses.length} courses this semester`}
-                showSearch={true}
-                searchPlaceholder="Search courses..."
-                searchValue={searchQuery}
-                onSearch={setSearchQuery}
-                filters={filters}
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
-                secondaryActions={[
-                    {
-                        icon: viewMode === 'grid' ? List : Grid,
-                        label: 'Toggle view',
-                        onClick: () => setViewMode(viewMode === 'grid' ? 'list' : 'grid')
-                    }
-                ]}
-                primaryAction={{
-                    icon: Plus,
-                    label: 'Add Course',
-                    onClick: () => console.log('Add course modal')
-                }}
-            />
+          const enrichedCourses = coursesData.result.courses.map(course => {
+            // Find next deadline for this course
+            const courseAssignments = assignments.filter(a => a.courseId === course.id);
+            const nextAssignment = courseAssignments.length > 0 ? courseAssignments[0] : null;
 
-            <div className="page-content">
-                <div className={`courses-container ${viewMode}`}>
-                    {filteredCourses.map((course) => (
-                        <CourseCard key={course.id} course={course} viewMode={viewMode} />
-                    ))}
-                </div>
+            let deadlineText = null;
+            if (nextAssignment) {
+              const days = Math.ceil((new Date(nextAssignment.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+              deadlineText = `${nextAssignment.title} - ${days} days`;
+            }
 
-                {filteredCourses.length === 0 && (
-                    <div className="empty-state">
-                        <BookOpen size={48} />
-                        <h3>No courses found</h3>
-                        <p>Try adjusting your search or filter criteria</p>
-                    </div>
-                )}
-            </div>
+            return {
+              id: course.id,
+              code: course.code,
+              name: course.name,
+              professor: course.professor,
+              semester: course.semester,
+              progress: course.progress || 0,
+              color: course.code.includes('CS') ? '#6366F1' : course.code.includes('MATH') ? '#8B5CF6' : '#06B6D4',
+              nextDeadline: deadlineText,
+              students: Math.floor(Math.random() * 30) + 20, // Mock student count as it's not in DB
+              status: 'active' // Assumption
+            };
+          });
+          setCourses(enrichedCourses);
+        }
+      } catch (error) {
+        console.error("Failed to fetch courses:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-            <style jsx>{`
+    fetchData();
+  }, []);
+
+  // Filter courses based on search and filter
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch =
+      course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.code.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesFilter =
+      activeFilter === 'all' ||
+      course.status === activeFilter;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  return (
+    <>
+      {/* CENTRALIZED HEADER with search, filters, and actions */}
+      <PageHeader
+        title="My Courses"
+        subtitle={`${filteredCourses.length} courses this semester`}
+        showSearch={true}
+        searchPlaceholder="Search courses..."
+        searchValue={searchQuery}
+        onSearch={setSearchQuery}
+        filters={filters}
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        secondaryActions={[
+          {
+            icon: viewMode === 'grid' ? List : Grid,
+            label: 'Toggle view',
+            onClick: () => setViewMode(viewMode === 'grid' ? 'list' : 'grid')
+          }
+        ]}
+        primaryAction={{
+          icon: Plus,
+          label: 'Add Course',
+          onClick: () => console.log('Add course modal')
+        }}
+      />
+
+      <div className="page-content">
+        <div className={`courses-container ${viewMode}`}>
+          {filteredCourses.map((course) => (
+            <CourseCard key={course.id} course={course} viewMode={viewMode} />
+          ))}
+        </div>
+
+        {filteredCourses.length === 0 && (
+          <div className="empty-state">
+            <BookOpen size={48} />
+            <h3>No courses found</h3>
+            <p>Try adjusting your search or filter criteria</p>
+          </div>
+        )}
+      </div>
+
+      <style jsx>{`
         .courses-container {
           display: grid;
           gap: var(--space-6);
@@ -169,82 +228,82 @@ export default function CoursesPage() {
           font-size: 0.875rem;
         }
       `}</style>
-        </>
-    );
+    </>
+  );
 }
 
 // Course Card Component
 function CourseCard({ course, viewMode }) {
-    const isGrid = viewMode === 'grid';
+  const isGrid = viewMode === 'grid';
 
-    return (
-        <Link href={`/courses/${course.id}`} className="course-card">
-            {/* Color indicator bar */}
+  return (
+    <Link href={`/courses/${course.id}`} className="course-card">
+      {/* Color indicator bar */}
+      <div
+        className="course-color-bar"
+        style={{ background: course.color }}
+      />
+
+      <div className="course-content">
+        <div className="course-header">
+          <div className="course-info">
+            <span className="course-code" style={{ color: course.color }}>
+              {course.code}
+            </span>
+            <h3 className="course-name">{course.name}</h3>
+            <span className="course-professor">{course.professor}</span>
+          </div>
+
+          <button
+            className="course-menu-btn"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Course menu');
+            }}
+          >
+            <MoreVertical size={18} />
+          </button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="course-progress">
+          <div className="progress-header">
+            <span>Progress</span>
+            <span className="progress-value">{course.progress}%</span>
+          </div>
+          <div className="progress-bar-container">
             <div
-                className="course-color-bar"
-                style={{ background: course.color }}
+              className="progress-bar"
+              style={{
+                width: `${course.progress}%`,
+                background: course.color
+              }}
             />
+          </div>
+        </div>
 
-            <div className="course-content">
-                <div className="course-header">
-                    <div className="course-info">
-                        <span className="course-code" style={{ color: course.color }}>
-                            {course.code}
-                        </span>
-                        <h3 className="course-name">{course.name}</h3>
-                        <span className="course-professor">{course.professor}</span>
-                    </div>
-
-                    <button
-                        className="course-menu-btn"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            console.log('Course menu');
-                        }}
-                    >
-                        <MoreVertical size={18} />
-                    </button>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="course-progress">
-                    <div className="progress-header">
-                        <span>Progress</span>
-                        <span className="progress-value">{course.progress}%</span>
-                    </div>
-                    <div className="progress-bar-container">
-                        <div
-                            className="progress-bar"
-                            style={{
-                                width: `${course.progress}%`,
-                                background: course.color
-                            }}
-                        />
-                    </div>
-                </div>
-
-                {/* Meta Info */}
-                <div className="course-meta">
-                    {course.nextDeadline && (
-                        <div className="meta-item">
-                            <Clock size={14} />
-                            <span>{course.nextDeadline}</span>
-                        </div>
-                    )}
-                    <div className="meta-item">
-                        <Users size={14} />
-                        <span>{course.students} students</span>
-                    </div>
-                </div>
-
-                {/* Quick Action */}
-                <div className="course-action">
-                    <span>View Details</span>
-                    <ArrowRight size={16} />
-                </div>
+        {/* Meta Info */}
+        <div className="course-meta">
+          {course.nextDeadline && (
+            <div className="meta-item">
+              <Clock size={14} />
+              <span>{course.nextDeadline}</span>
             </div>
+          )}
+          <div className="meta-item">
+            <Users size={14} />
+            <span>{course.students} students</span>
+          </div>
+        </div>
 
-            <style jsx>{`
+        {/* Quick Action */}
+        <div className="course-action">
+          <span>View Details</span>
+          <ArrowRight size={16} />
+        </div>
+      </div>
+
+      <style jsx>{`
         .course-card {
           display: flex;
           flex-direction: column;
@@ -375,6 +434,6 @@ function CourseCard({ course, viewMode }) {
           color: var(--accent-primary);
         }
       `}</style>
-        </Link>
-    );
+    </Link>
+  );
 }

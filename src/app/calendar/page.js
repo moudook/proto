@@ -3,223 +3,279 @@
 import { useState } from 'react';
 import PageHeader from '@/components/PageHeader';
 import {
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    Clock,
-    MapPin
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Clock,
+  MapPin
 } from 'lucide-react';
 
 // Mock events data
 const eventsData = [
-    {
-        id: 1,
-        title: 'CS301 Lecture',
-        type: 'lecture',
-        time: '10:00 - 11:30',
-        location: 'Room 205',
-        color: '#6366F1',
-        day: 1 // Monday
-    },
-    {
-        id: 2,
-        title: 'Study Session',
-        type: 'study',
-        time: '14:00 - 16:00',
-        location: 'Library',
-        color: '#8B5CF6',
-        day: 2 // Tuesday
-    },
-    {
-        id: 3,
-        title: 'MATH202 Office Hours',
-        type: 'office_hours',
-        time: '13:00 - 14:00',
-        location: 'Prof. Johnson Office',
-        color: '#06B6D4',
-        day: 4 // Thursday
-    },
-    {
-        id: 4,
-        title: 'Project Due',
-        type: 'deadline',
-        time: '23:59',
-        location: null,
-        color: '#EF4444',
-        day: 5 // Friday
-    },
+  {
+    id: 1,
+    title: 'CS301 Lecture',
+    type: 'lecture',
+    time: '10:00 - 11:30',
+    location: 'Room 205',
+    color: '#6366F1',
+    day: 1 // Monday
+  },
+  {
+    id: 2,
+    title: 'Study Session',
+    type: 'study',
+    time: '14:00 - 16:00',
+    location: 'Library',
+    color: '#8B5CF6',
+    day: 2 // Tuesday
+  },
+  {
+    id: 3,
+    title: 'MATH202 Office Hours',
+    type: 'office_hours',
+    time: '13:00 - 14:00',
+    location: 'Prof. Johnson Office',
+    color: '#06B6D4',
+    day: 4 // Thursday
+  },
+  {
+    id: 4,
+    title: 'Project Due',
+    type: 'deadline',
+    time: '23:59',
+    location: null,
+    color: '#EF4444',
+    day: 5 // Friday
+  },
 ];
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 const viewFilters = [
-    { id: 'week', label: 'Week' },
-    { id: 'month', label: 'Month' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
 ];
 
 export default function CalendarPage() {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [activeView, setActiveView] = useState('week');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [activeView, setActiveView] = useState('week');
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    // Get the week dates
-    const getWeekDates = () => {
-        const dates = [];
+  // Get the week dates
+  const getWeekDates = () => {
+    const dates = [];
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay()); // Start on Sunday
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  const weekDates = getWeekDates();
+  const today = new Date();
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        // Determine date range for API
+        // For simplicity, just fetch "this_week" relative to logical current date if close, or calculate logic.
+        // The tool accepts "this_week". But if user navigates, we need specific dates.
+
+        // Let's rely on calculating start/end date
         const startOfWeek = new Date(currentDate);
         startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(startOfWeek);
-            date.setDate(startOfWeek.getDate() + i);
-            dates.push(date);
+        const response = await fetch('/api/tools', {
+          method: 'POST',
+          body: JSON.stringify({
+            toolName: 'get_calendar_events',
+            parameters: {
+              startDate: startOfWeek.toISOString(),
+              endDate: endOfWeek.toISOString(),
+              type: 'all'
+            }
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const formattedEvents = data.result.events.map(e => {
+            const date = new Date(e.startTime);
+            return {
+              id: e.id,
+              title: e.title,
+              type: e.type,
+              time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              location: e.location,
+              color: e.color || '#6366F1',
+              day: date.getDay(), // 0-6 (Sun-Sat)
+              isoDate: e.startTime
+            };
+          });
+          setEvents(formattedEvents);
         }
-        return dates;
+      } catch (error) {
+        console.error("Failed to fetch calendar events:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const weekDates = getWeekDates();
-    const today = new Date();
+    fetchEvents();
+  }, [currentDate]);
 
-    const navigateWeek = (direction) => {
-        const newDate = new Date(currentDate);
-        newDate.setDate(currentDate.getDate() + (direction * 7));
-        setCurrentDate(newDate);
-    };
+  const navigateWeek = (direction) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (direction * 7));
+    setCurrentDate(newDate);
+  };
 
-    const formatMonth = (date) => {
-        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    };
+  const formatMonth = (date) => {
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
 
-    return (
-        <>
-            {/* CENTRALIZED HEADER with view toggle and actions */}
-            <PageHeader
-                title="Calendar"
-                subtitle={formatMonth(currentDate)}
-                filters={viewFilters}
-                activeFilter={activeView}
-                onFilterChange={setActiveView}
-                primaryAction={{
-                    icon: Plus,
-                    label: 'Add Event',
-                    onClick: () => console.log('Add event modal')
-                }}
-            />
+  return (
+    <>
+      {/* CENTRALIZED HEADER with view toggle and actions */}
+      <PageHeader
+        title="Calendar"
+        subtitle={formatMonth(currentDate)}
+        filters={viewFilters}
+        activeFilter={activeView}
+        onFilterChange={setActiveView}
+        primaryAction={{
+          icon: Plus,
+          label: 'Add Event',
+          onClick: () => console.log('Add event modal')
+        }}
+      />
 
-            <div className="page-content">
-                <div className="calendar-container">
-                    {/* Week Navigation */}
-                    <div className="calendar-nav">
-                        <button
-                            className="nav-btn"
-                            onClick={() => navigateWeek(-1)}
-                        >
-                            <ChevronLeft size={20} />
-                        </button>
-                        <button
-                            className="today-btn"
-                            onClick={() => setCurrentDate(new Date())}
-                        >
-                            Today
-                        </button>
-                        <button
-                            className="nav-btn"
-                            onClick={() => navigateWeek(1)}
-                        >
-                            <ChevronRight size={20} />
-                        </button>
-                    </div>
+      <div className="page-content">
+        <div className="calendar-container">
+          {/* Week Navigation */}
+          <div className="calendar-nav">
+            <button
+              className="nav-btn"
+              onClick={() => navigateWeek(-1)}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              className="today-btn"
+              onClick={() => setCurrentDate(new Date())}
+            >
+              Today
+            </button>
+            <button
+              className="nav-btn"
+              onClick={() => navigateWeek(1)}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
 
-                    {/* Week View */}
-                    <div className="week-view">
-                        {/* Time Column */}
-                        <div className="time-column">
-                            <div className="time-header"></div>
-                            {timeSlots.map((time) => (
-                                <div key={time} className="time-slot">
-                                    {time}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Day Columns */}
-                        {weekDates.map((date, index) => {
-                            const isToday =
-                                date.getDate() === today.getDate() &&
-                                date.getMonth() === today.getMonth() &&
-                                date.getFullYear() === today.getFullYear();
-
-                            const dayEvents = eventsData.filter(e => e.day === index);
-
-                            return (
-                                <div key={index} className="day-column">
-                                    <div className={`day-header ${isToday ? 'today' : ''}`}>
-                                        <span className="day-name">{daysOfWeek[index]}</span>
-                                        <span className={`day-number ${isToday ? 'today-number' : ''}`}>
-                                            {date.getDate()}
-                                        </span>
-                                    </div>
-
-                                    <div className="day-events">
-                                        {dayEvents.map((event) => (
-                                            <div
-                                                key={event.id}
-                                                className="event-card"
-                                                style={{
-                                                    borderLeftColor: event.color,
-                                                    background: `${event.color}10`
-                                                }}
-                                            >
-                                                <span
-                                                    className="event-title"
-                                                    style={{ color: event.color }}
-                                                >
-                                                    {event.title}
-                                                </span>
-                                                <div className="event-meta">
-                                                    <Clock size={12} />
-                                                    <span>{event.time}</span>
-                                                </div>
-                                                {event.location && (
-                                                    <div className="event-meta">
-                                                        <MapPin size={12} />
-                                                        <span>{event.location}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-
-                                        {/* Empty time slots */}
-                                        {timeSlots.map((_, slotIndex) => (
-                                            <div key={slotIndex} className="time-slot-bg" />
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Upcoming Events Summary */}
-                    <div className="events-summary">
-                        <h3>Today's Events</h3>
-                        <div className="summary-list">
-                            {eventsData.slice(0, 3).map((event) => (
-                                <div key={event.id} className="summary-item">
-                                    <div
-                                        className="summary-indicator"
-                                        style={{ background: event.color }}
-                                    />
-                                    <div className="summary-content">
-                                        <span className="summary-title">{event.title}</span>
-                                        <span className="summary-time">{event.time}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+          {/* Week View */}
+          <div className="week-view">
+            {/* Time Column */}
+            <div className="time-column">
+              <div className="time-header"></div>
+              {timeSlots.map((time) => (
+                <div key={time} className="time-slot">
+                  {time}
                 </div>
+              ))}
             </div>
 
-            <style jsx>{`
+            {/* Day Columns */}
+            {weekDates.map((date, index) => {
+              const isToday =
+                date.getDate() === today.getDate() &&
+                date.getMonth() === today.getMonth() &&
+                date.getFullYear() === today.getFullYear();
+
+              const dayEvents = events.filter(e => e.day === index);
+
+              return (
+                <div key={index} className="day-column">
+                  <div className={`day-header ${isToday ? 'today' : ''}`}>
+                    <span className="day-name">{daysOfWeek[index]}</span>
+                    <span className={`day-number ${isToday ? 'today-number' : ''}`}>
+                      {date.getDate()}
+                    </span>
+                  </div>
+
+                  <div className="day-events">
+                    {dayEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="event-card"
+                        style={{
+                          borderLeftColor: event.color,
+                          background: `${event.color}10`
+                        }}
+                      >
+                        <span
+                          className="event-title"
+                          style={{ color: event.color }}
+                        >
+                          {event.title}
+                        </span>
+                        <div className="event-meta">
+                          <Clock size={12} />
+                          <span>{event.time}</span>
+                        </div>
+                        {event.location && (
+                          <div className="event-meta">
+                            <MapPin size={12} />
+                            <span>{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Empty time slots */}
+                    {timeSlots.map((_, slotIndex) => (
+                      <div key={slotIndex} className="time-slot-bg" />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Upcoming Events Summary */}
+          <div className="events-summary">
+            <h3>Today's Events</h3>
+            <div className="summary-list">
+              {events.slice(0, 3).map((event) => (
+                <div key={event.id} className="summary-item">
+                  <div
+                    className="summary-indicator"
+                    style={{ background: event.color }}
+                  />
+                  <div className="summary-content">
+                    <span className="summary-title">{event.title}</span>
+                    <span className="summary-time">{event.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
         .calendar-container {
           display: flex;
           flex-direction: column;
@@ -443,6 +499,6 @@ export default function CalendarPage() {
           }
         }
       `}</style>
-        </>
-    );
+    </>
+  );
 }
