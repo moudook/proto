@@ -117,8 +117,13 @@ export async function generateWithGemini(message, conversationHistory = [], user
         // Detect intent for context
         const intent = detectIntent(message);
 
+        // COST OPTIMIZATION: Truncate history to save tokens
+        // Keep only the last 10 messages (approx. 5 turns)
+        const MAX_HISTORY = 10;
+        const recentHistory = conversationHistory.slice(-MAX_HISTORY);
+
         // Build the chat history
-        const history = conversationHistory.map(msg => ({
+        const history = recentHistory.map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'model',
             parts: [{ text: msg.content }]
         }));
@@ -236,9 +241,6 @@ function generateActionsForIntent(intent) {
     return actionMap[intent] || actionMap.general;
 }
 
-/**
- * Fallback response generator when LLM is not available
- */
 /**
  * Fallback response generator when LLM is not available
  */
