@@ -1,5 +1,5 @@
 import "./globals.css";
-import NavRail from "@/components/NavRail";
+import Providers from "@/components/Providers";
 
 export const metadata = {
   title: "StudyPilot - AI Academic Companion",
@@ -10,12 +10,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <div className="app-container">
-          <NavRail />
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
