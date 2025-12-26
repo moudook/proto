@@ -4,10 +4,12 @@
  * POST /api/chat
  * 
  * Handles chat messages and returns AI agent responses.
+ * Connects to real LLM (Gemini) when API key is available,
+ * falls back to intelligent mock responses otherwise.
  */
 
 import { NextResponse } from 'next/server';
-import { agent } from '@/lib/agent-service';
+import { generateAIResponse } from '@/lib/llm-provider';
 
 export async function POST(request) {
     try {
@@ -21,17 +23,19 @@ export async function POST(request) {
             );
         }
 
-        // Process message through the AI agent
-        const result = await agent.processMessage(message, conversationHistory);
+        // Generate response using LLM provider (Gemini or fallback)
+        const result = await generateAIResponse(message, conversationHistory);
 
         return NextResponse.json({
             response: result.response,
-            visualElements: result.visualElements,
-            actions: result.actions,
+            visualElements: result.visualElements || null,
+            actions: result.actions || [],
             metadata: {
                 intent: result.intent,
-                toolsUsed: result.toolsUsed,
-                timestamp: new Date().toISOString()
+                model: result.model,
+                toolsUsed: result.toolResults ? [result.toolResults] : [],
+                timestamp: new Date().toISOString(),
+                fallback: result.fallback || false
             }
         });
 
@@ -41,8 +45,12 @@ export async function POST(request) {
         return NextResponse.json(
             {
                 error: 'Failed to process message',
-                response: "I'm having trouble processing your request right now. Please try again.",
-                actions: []
+                response: "I'm having trouble processing your request right now. Please try again in a moment.",
+                actions: [],
+                metadata: {
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                }
             },
             { status: 500 }
         );
@@ -51,16 +59,24 @@ export async function POST(request) {
 
 // Health check endpoint
 export async function GET() {
+    const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+
     return NextResponse.json({
         status: 'healthy',
         agent: 'StudyPilot AI',
-        version: '1.0.0',
+        version: '2.0.0',
+        llm: {
+            provider: hasGeminiKey ? 'gemini' : 'fallback',
+            model: hasGeminiKey ? (process.env.NEXT_PUBLIC_AI_MODEL || 'gemini-1.5-flash') : 'mock',
+            connected: hasGeminiKey
+        },
         capabilities: [
             'course_management',
             'deadline_tracking',
             'study_planning',
             'grade_analysis',
-            'wellness_monitoring'
+            'wellness_monitoring',
+            'natural_language_understanding'
         ]
     });
 }
