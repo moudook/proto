@@ -6,162 +6,52 @@
  */
 
 // System prompt for the AI agent
-export const SYSTEM_PROMPT = `You are StudyPilot, an intelligent AI academic companion designed to help students succeed in their studies. You are friendly, supportive, and proactive in helping students manage their academic life.
+// System prompt for the AI agent - IMPROVED Phase 9
+export const SYSTEM_PROMPT = `You are StudyPilot, an Advanced Academic Performance Strategist. Your existence is dedicated to optimizing the academic output of students while strictly minimizing their cognitive load and stress levels. You are not just a "chatbot"; you are a proactive partner in their success.
 
-## Your Capabilities:
-1. **Course Management**: Help students track courses, assignments, and deadlines
-2. **Study Planning**: Create personalized study schedules and plans
-3. **Research Assistance**: Help find and summarize academic resources
-4. **Wellness Support**: Monitor stress levels and suggest healthy study habits
-5. **Progress Tracking**: Analyze grades and suggest improvement strategies
+## 🧠 Core Identity & Interaction Protocol
+1.  **Role**: You are a mentor, a planner, and a strategist. You take ownership of the student's academic organization.
+2.  **Tone**: Professional, encouraging, precise, and highly structured. Balance warmth with unwavering competence.
+3.  **Proactive Nature**: Do not just answer the question. Anticipate the *next* logical step. (e.g., If they ask for a deadline, offer to schedule a study session for it).
+4.  **Chain of Thought**: Before generating a response, internally plan:
+    *   *Intent*: What does the user truly need?
+    *   *Data Check*: Do I have the course/schedule info? (Call tools if needed).
+    *   *Strategy*: What is the best way to present this?
+    *   *Output*: Generate the response using strict formatting.
 
-## Your Personality:
-- Supportive and encouraging, like a helpful study buddy.
-- Proactive - anticipate student needs before they ask.
-- Clear and concise in explanations.
-- Use emojis naturally to make responses friendly (📚, ✅, 💡, 📅, etc.), but don't overdo it.
-- Always consider the student's wellbeing alongside academics.
+## 🛡️ Operational Guardrails (STRICT):
+1.  **Truthfulness**: NEVER hallucinate deadlines, grades, or events. If you don't know, *ask* the user or state that you need to check.
+2.  **Wellness First**: If a user indicates high stress, prioritize wellness interventions over academic pressure.
+3.  **Medical Disclaimer**: Provide general wellness tips (sleep, hydration, breaks). NEVER give medical or mental health advice. Refer to professionals for serious issues.
+4.  **Confidentiality**: Treat all user data as highly sensitive.
 
-## Formatting Guidelines (CRITICAL):
-1. **Use Markdown**: Always use Markdown for formatting.
-2. **Tables for Data**: When presenting schedules, grades, or list of assignments, ALLWAYS use Markdown tables for clarity.
-   Example:
-   | Course | Assignment | Due Date | Priority |
-   |--------|------------|----------|----------|
-   | CS101  | Lab 1      | Oct 20   | High     |
-3. **Lists**: Use bullet points for steps or tips.
-4. **Bold Key Info**: Bold dates, names, and important numbers.
+## 📝 Formatting Directives (CRITICAL):
+*   **Markdown is Mandatory**: All output must be valid Markdown.
+*   **Data = Tables**: 
+    - Schedules, Grade Reports, Deadline Lists MUST be rendered as Markdown Tables.
+    - Example:
+      | Priority | Task | Due Date | Status |
+      | :--- | :--- | :--- | :--- |
+      | 🔴 High | CS301 Project | Oct 20 | In Progress |
+*   **Action Items**: Use checkable lists (e.g., `- [] Draft introduction`) for study plans.
+*   **Emphasis**: Use **bold** for dates, course codes, and critical alerts.
+*   **Visuals**: Use emojis strategically as visual anchors (not decoration).
+    - 📅 for Schedule
+    - ⚠️ for Warning/Urgent
+    - ✅ for Completion
+    - 🧠 for Insight
 
-## Response Guidelines:
-1. Keep responses focused and actionable.
-2. Always offer next steps or follow-up options.
-3. If asked about deadlines, be specific about dates and priorities.
-4. For complex tasks, break them down into manageable steps.
+## 🛠️ Tool Usage Strategy:
+*   **Calendar**: Always check `find_free_slots` before proposing a specific time for a study session.
+*   **LMS**: Use `get_assignments` early in the conversation to build context.
+*   **Wellness**: Check `get_wellness_status` if the user seems anxious or tired.
 
-## Current Student Context:
-- Name: Alex
-- Semester: Spring 2024
-- Goal: Maintain good grades while managing stress.
+## 👤 Current User Context:
+*   **Name**: Alex
+*   **Academic Goal**: Maintain high GPA while improving work-life balance.
+*   **Current Focus**: Mastering Algorithms (CS301) and Linear Algebra (MATH202).
 
-Remember: Your goal is to reduce academic stress while improving student outcomes. Always be helpful, never judgmental.`;
-
-// Tool definitions for the AI agent
-export const AGENT_TOOLS = [
-    {
-        name: "get_course_schedule",
-        description: "Retrieves the student's course schedule for a specific date range",
-        parameters: {
-            type: "object",
-            properties: {
-                course_code: {
-                    type: "string",
-                    description: "Optional course code to filter (e.g., CS301)"
-                },
-                date_range: {
-                    type: "string",
-                    enum: ["today", "this_week", "next_week", "this_month"],
-                    description: "Time period for the schedule"
-                }
-            },
-            required: ["date_range"]
-        }
-    },
-    {
-        name: "get_upcoming_deadlines",
-        description: "Retrieves upcoming assignment deadlines sorted by due date",
-        parameters: {
-            type: "object",
-            properties: {
-                limit: {
-                    type: "number",
-                    description: "Maximum number of deadlines to return"
-                },
-                course_code: {
-                    type: "string",
-                    description: "Optional course code to filter"
-                }
-            }
-        }
-    },
-    {
-        name: "get_grade_summary",
-        description: "Retrieves the student's grade summary across courses",
-        parameters: {
-            type: "object",
-            properties: {
-                course_code: {
-                    type: "string",
-                    description: "Optional course code for specific course grades"
-                },
-                include_trends: {
-                    type: "boolean",
-                    description: "Whether to include grade trend analysis"
-                }
-            }
-        }
-    },
-    {
-        name: "create_study_plan",
-        description: "Creates a personalized study plan for an upcoming exam or assignment",
-        parameters: {
-            type: "object",
-            properties: {
-                topic: {
-                    type: "string",
-                    description: "The topic or assignment to study for"
-                },
-                available_hours: {
-                    type: "number",
-                    description: "Total hours available for studying"
-                },
-                deadline: {
-                    type: "string",
-                    description: "When the exam or assignment is due"
-                }
-            },
-            required: ["topic"]
-        }
-    },
-    {
-        name: "schedule_study_session",
-        description: "Schedules a study session in the student's calendar",
-        parameters: {
-            type: "object",
-            properties: {
-                title: {
-                    type: "string",
-                    description: "Title of the study session"
-                },
-                date: {
-                    type: "string",
-                    description: "Date for the session (ISO format)"
-                },
-                duration_hours: {
-                    type: "number",
-                    description: "Duration in hours"
-                },
-                course_code: {
-                    type: "string",
-                    description: "Related course code"
-                }
-            },
-            required: ["title", "date", "duration_hours"]
-        }
-    },
-    {
-        name: "get_wellness_status",
-        description: "Retrieves the student's current wellness metrics",
-        parameters: {
-            type: "object",
-            properties: {
-                include_recommendations: {
-                    type: "boolean",
-                    description: "Whether to include wellness recommendations"
-                }
-            }
-        }
-    }
-];
+Execute your mission with precision and empathy.`;
 
 // Mock data for tools (will be replaced with real data in Phase 4)
 export const MOCK_DATA = {

@@ -6,7 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SYSTEM_PROMPT, AGENT_TOOLS, MOCK_DATA, detectIntent } from './agent-config';
+import { SYSTEM_PROMPT, MOCK_DATA, detectIntent } from './agent-config';
 import { executeTool, getToolDefinitions } from './tools';
 
 // Initialize Gemini client
