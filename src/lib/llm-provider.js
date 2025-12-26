@@ -58,34 +58,41 @@ async function executeToolCallFromRegistry(toolName, args) {
 /**
  * Build context message with current student data
  */
-function buildContextMessage() {
-    const deadlines = MOCK_DATA.deadlines.slice(0, 3).map(d =>
-        `- ${d.title} (${d.course}): Due ${d.dueDate}, Priority: ${d.priority}, Weight: ${d.weight}`
-    ).join('\n');
+function buildContextMessage(userContext = null) {
+    // Use user context if available, otherwise fall back to MOCK_DATA
+    const contextName = userContext?.name || 'Alex';
+    const semester = userContext?.semester || 'Spring 2024';
 
-    const courses = MOCK_DATA.courses.map(c =>
-        `- ${c.code}: ${c.name}, Progress: ${c.progress}%, Grade: ${c.grade}`
-    ).join('\n');
+    let deadlinesStr = '';
+    if (userContext?.upcomingDeadlines) {
+        deadlinesStr = userContext.upcomingDeadlines.map(d =>
+            `- ${d.title}: Due ${d.dueDate}`
+        ).join('\n');
+    } else {
+        deadlinesStr = MOCK_DATA.deadlines.slice(0, 3).map(d =>
+            `- ${d.title} (${d.course}): Due ${d.dueDate}, Priority: ${d.priority}, Weight: ${d.weight}`
+        ).join('\n');
+    }
 
-    const wellness = MOCK_DATA.wellness;
+    let coursesStr = '';
+    if (userContext?.courses) {
+        coursesStr = userContext.courses.map(c => `- ${c}`).join('\n');
+    } else {
+        coursesStr = MOCK_DATA.courses.map(c =>
+            `- ${c.code}: ${c.name}, Progress: ${c.progress}%, Grade: ${c.grade}`
+        ).join('\n');
+    }
 
     return `
 Current Student Context:
-- Name: Alex
-- Semester: Spring 2024
+- Name: ${contextName}
+- Semester: ${semester}
 
 Enrolled Courses:
-${courses}
+${coursesStr}
 
 Upcoming Deadlines:
-${deadlines}
-
-Wellness Status:
-- Balance Score: ${wellness.overallScore}/10
-- Stress Level: ${wellness.stress}
-- Sleep Quality: ${wellness.sleep}
-- Workload: ${wellness.workload}
-- Study Streak: ${wellness.studyStreak} days
+${deadlinesStr}
 
 Today's Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
 `;
@@ -94,7 +101,7 @@ Today's Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 
 /**
  * Generate response using Gemini LLM
  */
-export async function generateWithGemini(message, conversationHistory = []) {
+export async function generateWithGemini(message, conversationHistory = [], userContext = null) {
     const geminiModel = initializeGemini();
 
     if (!geminiModel) {
@@ -114,7 +121,7 @@ export async function generateWithGemini(message, conversationHistory = []) {
         }));
 
         // Add context about the student's current state
-        const contextMessage = buildContextMessage();
+        const contextMessage = buildContextMessage(userContext);
 
         // Start a chat session
         const chat = geminiModel.startChat({
@@ -125,7 +132,7 @@ export async function generateWithGemini(message, conversationHistory = []) {
                 },
                 {
                     role: 'model',
-                    parts: [{ text: 'I have received the student context. I can see Alex is enrolled in CS301, MATH202, and ENG101 for Spring 2024. I notice there are some upcoming deadlines, with the CS301 Project Proposal being high priority. I\'m ready to help with any academic questions or planning needs!' }]
+                    parts: [{ text: `I have received the student context for ${userContext?.name || 'the student'}. I'm ready to help with any academic questions or planning needs!` }]
                 },
                 ...history
             ],
@@ -273,12 +280,16 @@ function generateFallbackResponse(message, errorMessage = null) {
  * Main function to generate AI response
  * Automatically selects the best available provider
  */
-export async function generateAIResponse(message, conversationHistory = []) {
+/**
+ * Main function to generate AI response
+ * Automatically selects the best available provider
+ */
+export async function generateAIResponse(message, conversationHistory = [], userContext = null) {
     // Try Gemini first
     if (process.env.GEMINI_API_KEY) {
-        return generateWithGemini(message, conversationHistory);
+        return generateWithGemini(message, conversationHistory, userContext);
     }
 
     // Fallback to mock responses
-    return generateFallbackResponse(message);
+    return generateFallbackResponse(message, null, userContext);
 }

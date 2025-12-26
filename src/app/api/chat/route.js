@@ -14,7 +14,7 @@ import { generateAIResponse } from '@/lib/llm-provider';
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { message, conversationHistory = [] } = body;
+        const { message, conversationHistory = [], userContext = null } = body;
 
         if (!message || typeof message !== 'string') {
             return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(request) {
         }
 
         // Generate response using LLM provider (Gemini or fallback)
-        const result = await generateAIResponse(message, conversationHistory);
+        const result = await generateAIResponse(message, conversationHistory, userContext);
 
         return NextResponse.json({
             response: result.response,
